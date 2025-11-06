@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
+using System.Collections.Generic;
 
 public class GunController : MonoBehaviour
 {
@@ -18,6 +19,10 @@ public class GunController : MonoBehaviour
     public Vector3 magazineLocalPosition = new Vector3(0.104200006f, -0.00340008782f, 0f);
     public Quaternion magazineLocalRotation = Quaternion.identity;
 
+    [Header("Grab Orientation")]
+    [Tooltip("Extra yaw (degrees) applied to the grab attach so the gun points forward. Set to 180 to flip if it points toward you.")]
+    public float attachYawOffset = 180f;
+
     [Header("Optional desktop testing (non-VR)")]
     public InputActionReference desktopFire; // allows left-click to fire in Editor
 
@@ -29,6 +34,19 @@ public class GunController : MonoBehaviour
     UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable grab;
     System.Action<InputAction.CallbackContext> desktopFireHandler;
 
+    // Cache of interactor visual/physics state we modify while holding the gun
+    class InteractorState
+    {
+        public List<Renderer> renderers = new List<Renderer>();
+        public List<bool> rendererWasEnabled = new List<bool>();
+        public Rigidbody rb;
+        public bool rbHadDetectCollisions;
+        public bool rbWasKinematic;
+    }
+
+    // Track one entry per interactor transform
+    readonly Dictionary<Transform, InteractorState> _hiddenInteractorStates = new Dictionary<Transform, InteractorState>();
+
     void Awake()
     {
         grab = GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
@@ -37,6 +55,13 @@ public class GunController : MonoBehaviour
         {
             grab.activated.AddListener(OnActivated);
             grab.deactivated.AddListener(OnDeactivated);
+
+            // Hide controller visuals and disable its rigidbody while holding this gun
+            grab.selectEntered.AddListener(OnSelectEntered);
+            grab.selectExited.AddListener(OnSelectExited);
+
+            // Ensure we have an attach transform so orientation can be corrected (points forward)
+            EnsureAttachTransformAndOrientation();
         }
 
         if (desktopFire != null)
@@ -52,6 +77,8 @@ public class GunController : MonoBehaviour
         {
             grab.activated.RemoveListener(OnActivated);
             grab.deactivated.RemoveListener(OnDeactivated);
+            grab.selectEntered.RemoveListener(OnSelectEntered);
+            grab.selectExited.RemoveListener(OnSelectExited);
         }
 
         if (desktopFire != null && desktopFireHandler != null)
@@ -66,6 +93,119 @@ public class GunController : MonoBehaviour
 
     void OnActivated(ActivateEventArgs _) => isFiring = true;
     void OnDeactivated(DeactivateEventArgs _) => isFiring = false;
+
+    void OnSelectEntered(SelectEnterEventArgs args)
+    {
+        var interactor = args?.interactorObject;
+        if (interactor == null) return;
+
+        var t = interactor.transform;
+        if (t == null || _hiddenInteractorStates.ContainsKey(t))
+            return;
+
+        var state = new InteractorState();
+
+        // Hide all visual renderers on the interactor (controller model, hand mesh, etc.)
+        // Collect renderers manually (overload with List may not exist on all Unity versions)
+        foreach (var r in t.GetComponentsInChildren<Renderer>(true))
+        {
+            state.renderers.Add(r);
+        }
+        foreach (var r in state.renderers)
+        {
+            state.rendererWasEnabled.Add(r.enabled);
+            r.enabled = false;
+        }
+
+        // Disable physics influence from the controller while holding the gun
+        state.rb = t.GetComponentInChildren<Rigidbody>();
+        if (state.rb != null)
+        {
+            state.rbHadDetectCollisions = state.rb.detectCollisions;
+            state.rbWasKinematic = state.rb.isKinematic;
+            state.rb.detectCollisions = false;
+            state.rb.isKinematic = true;
+            state.rb.linearVelocity = Vector3.zero;
+            state.rb.angularVelocity = Vector3.zero;
+        }
+
+        _hiddenInteractorStates[t] = state;
+    }
+
+    void OnSelectExited(SelectExitEventArgs args)
+    {
+        var interactor = args?.interactorObject;
+        if (interactor == null) return;
+
+        var t = interactor.transform;
+        if (t == null) return;
+
+        if (_hiddenInteractorStates.TryGetValue(t, out var state))
+        {
+            for (int i = 0; i < state.renderers.Count; i++)
+            {
+                var r = state.renderers[i];
+                if (r != null)
+                {
+                    var wasEnabled = i < state.rendererWasEnabled.Count ? state.rendererWasEnabled[i] : true;
+                    r.enabled = wasEnabled;
+                }
+            }
+
+            if (state.rb != null)
+            {
+                state.rb.detectCollisions = state.rbHadDetectCollisions;
+                state.rb.isKinematic = state.rbWasKinematic;
+            }
+
+            _hiddenInteractorStates.Remove(t);
+        }
+    }
+
+    // Ensure the gun aligns forward when held by correcting the attach transform orientation
+    void EnsureAttachTransformAndOrientation()
+    {
+        if (grab == null) return;
+
+        // Create an attach transform if none assigned
+        if (grab.attachTransform == null)
+        {
+            var attach = new GameObject("GripAttach").transform;
+            attach.SetParent(transform, false);
+            attach.localPosition = Vector3.zero;
+            attach.localRotation = Quaternion.identity;
+            grab.attachTransform = attach;
+        }
+
+        // Compute local forward of the muzzle in gun local space to determine yaw offset
+        float yawDeg = 0f;
+        if (muzzle != null)
+        {
+            Vector3 localMuzzleFwd = transform.InverseTransformDirection(muzzle.forward);
+
+            // Determine the dominant horizontal axis (X or Z)
+            float absX = Mathf.Abs(localMuzzleFwd.x);
+            float absZ = Mathf.Abs(localMuzzleFwd.z);
+
+            if (absX > absZ)
+            {
+                // Muzzle is closer to local ±X, rotate so it becomes +Z
+                yawDeg = localMuzzleFwd.x > 0f ? -90f : 90f;
+            }
+            else if (absZ > 0.0001f)
+            {
+                // If it's already near ±Z, flip if pointing backwards
+                yawDeg = localMuzzleFwd.z < 0f ? 180f : 0f;
+            }
+        }
+
+        // Apply extra yaw as requested (default 180 flips if it points toward you)
+        yawDeg += attachYawOffset;
+
+        grab.attachTransform.localRotation = Quaternion.Euler(0f, yawDeg, 0f) * grab.attachTransform.localRotation;
+        grab.matchAttachRotation = true;
+        grab.matchAttachPosition = true;
+    }
 
     void TryFire()
     {
