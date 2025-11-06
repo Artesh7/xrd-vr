@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6817838798088227432}
   - component: {fileID: 4724920415651951191}
+  - component: {fileID: 5319086801969352756}
   m_Layer: 0
   m_Name: PlayerRadius
   m_TagString: Untagged
@@ -55,6 +56,18 @@ CapsuleCollider:
   m_Height: 1.82
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0.19287014}
+--- !u!114 &5319086801969352756
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8337418940147336152}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80a3b434861c82e44abcffcd6d53f737, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyPlayerRadiusTrigger
 --- !u!1001 &2371232859528158466
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -300,6 +313,8 @@ MonoBehaviour:
   health: 100
   speed: 3
   knockbackDamping: 10
+  destroyDelayAfterDeath: 0
+  animator: {fileID: 0}
 --- !u!54 &4762845532030414270
 Rigidbody:
   m_ObjectHideFlags: 0
