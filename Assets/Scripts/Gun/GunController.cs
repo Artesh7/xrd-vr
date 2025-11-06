@@ -23,6 +23,12 @@ public class GunController : MonoBehaviour
     bool isFiring;
 
     UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable grab;
+    // While grabbed, align gun rotation to the controller's forward
+    Transform currentInteractorTransform = null;
+    System.Collections.Generic.List<Renderer> currentInteractorRenderers = new System.Collections.Generic.List<Renderer>();
+    System.Collections.Generic.List<Collider> currentInteractorColliders = new System.Collections.Generic.List<Collider>();
+    System.Collections.Generic.List<Rigidbody> currentInteractorRigidbodies = new System.Collections.Generic.List<Rigidbody>();
+    System.Collections.Generic.List<bool> currentInteractorRigidbodyOriginalKinematic = new System.Collections.Generic.List<bool>();
 
     void Awake()
     {
@@ -32,6 +38,27 @@ public class GunController : MonoBehaviour
         {
             grab.activated.AddListener(OnActivated);
             grab.deactivated.AddListener(OnDeactivated);
+                grab.selectEntered.AddListener(OnSelectEntered);
+                grab.selectExited.AddListener(OnSelectExited);
+                // Ensure there's a stable attach transform so grabbing uses a fixed
+                // grip point instead of the collision contact point (prevents
+                // picking the gun from the side when it's lying on a table).
+                if (grab.attachTransform == null)
+                {
+                    var attachGo = transform.Find("GripAttach");
+                    if (attachGo == null)
+                    {
+                        var go = new GameObject("GripAttach");
+                        go.transform.SetParent(transform, false);
+                        go.transform.localPosition = Vector3.zero;
+                        go.transform.localRotation = Quaternion.identity;
+                        grab.attachTransform = go.transform;
+                    }
+                    else
+                    {
+                        grab.attachTransform = attachGo;
+                    }
+                }
         }
 
         if (desktopFire != null)
@@ -44,6 +71,8 @@ public class GunController : MonoBehaviour
         {
             grab.activated.RemoveListener(OnActivated);
             grab.deactivated.RemoveListener(OnDeactivated);
+                grab.selectEntered.RemoveListener(OnSelectEntered);
+                grab.selectExited.RemoveListener(OnSelectExited);
         }
 
         if (desktopFire != null)
@@ -54,10 +83,138 @@ public class GunController : MonoBehaviour
     {
         if (isFiring)
             TryFire();
+
+        // If currently selected, align the gun's forward to the interactor/controller forward
+        if (currentInteractorTransform != null)
+        {
+            if (muzzle != null)
+            {
+                // Rotate the gun so the muzzle's forward aligns with the interactor forward
+                var rot = Quaternion.FromToRotation(muzzle.forward, currentInteractorTransform.forward);
+                transform.rotation = rot * transform.rotation;
+            }
+            else
+            {
+                transform.rotation = Quaternion.LookRotation(currentInteractorTransform.forward, currentInteractorTransform.up);
+            }
+        }
     }
 
     void OnActivated(ActivateEventArgs _) => isFiring = true;
     void OnDeactivated(DeactivateEventArgs _) => isFiring = false;
+
+    void OnSelectEntered(SelectEnterEventArgs args)
+    {
+        if (args == null || args.interactorObject == null) return;
+        currentInteractorTransform = args.interactorObject.transform as Transform;
+
+        // Enforce proximity at selection time (if too far, cancel selection)
+        try
+        {
+            var interactorBase = args.interactorObject as UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor;
+            if (interactorBase != null && grab != null && grab.interactionManager != null)
+            {
+                float dist = Vector3.Distance(interactorBase.transform.position, transform.position);
+                if (dist > 0.75f) // default max pickup distance; tweak as needed or expose as field
+                {
+                    var ixrInteractor = interactorBase as UnityEngine.XR.Interaction.Toolkit.Interactors.IXRSelectInteractor;
+                    var ixrInteractable = grab as UnityEngine.XR.Interaction.Toolkit.Interactables.IXRSelectInteractable;
+                    if (ixrInteractor != null && ixrInteractable != null)
+                        grab.interactionManager.SelectExit(ixrInteractor, ixrInteractable);
+                    return;
+                }
+            }
+        }
+        catch { }
+
+        if (currentInteractorTransform != null)
+        {
+            if (muzzle != null)
+            {
+                var rot = Quaternion.FromToRotation(muzzle.forward, currentInteractorTransform.forward);
+                transform.rotation = rot * transform.rotation;
+            }
+            else
+            {
+                transform.rotation = Quaternion.LookRotation(currentInteractorTransform.forward, currentInteractorTransform.up);
+            }
+        }
+
+        // Hide interactor visuals while holding the gun
+        currentInteractorRenderers.Clear();
+        var interactorObj = args.interactorObject as UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor;
+        if (interactorObj != null)
+        {
+            var rends = interactorObj.transform.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in rends)
+            {
+                if (r == null) continue;
+                if (r.enabled)
+                {
+                    currentInteractorRenderers.Add(r);
+                    r.enabled = false;
+                }
+            }
+            // Disable colliders and make rigidbodies kinematic on the controller visuals
+            currentInteractorColliders.Clear();
+            currentInteractorRigidbodies.Clear();
+            currentInteractorRigidbodyOriginalKinematic.Clear();
+
+            var cols = interactorObj.transform.GetComponentsInChildren<Collider>(true);
+            foreach (var c in cols)
+            {
+                if (c == null) continue;
+                if (c.enabled)
+                {
+                    currentInteractorColliders.Add(c);
+                    c.enabled = false;
+                }
+            }
+
+            var rbs = interactorObj.transform.GetComponentsInChildren<Rigidbody>(true);
+            foreach (var rb in rbs)
+            {
+                if (rb == null) continue;
+                currentInteractorRigidbodies.Add(rb);
+                currentInteractorRigidbodyOriginalKinematic.Add(rb.isKinematic);
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.isKinematic = true;
+            }
+        }
+    }
+
+    void OnSelectExited(SelectExitEventArgs args)
+    {
+        // Re-enable any renderers we disabled on select
+        var interactorObj = args.interactorObject as UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor;
+        if (interactorObj != null)
+        {
+            foreach (var r in currentInteractorRenderers)
+                if (r != null)
+                    r.enabled = true;
+        }
+        currentInteractorRenderers.Clear();
+        // Re-enable colliders and restore rigidbody kinematic states
+        foreach (var c in currentInteractorColliders)
+            if (c != null)
+                c.enabled = true;
+        currentInteractorColliders.Clear();
+
+        for (int i = 0; i < currentInteractorRigidbodies.Count; ++i)
+        {
+            var rb = currentInteractorRigidbodies[i];
+            if (rb == null) continue;
+            bool origK = true;
+            if (i < currentInteractorRigidbodyOriginalKinematic.Count)
+                origK = currentInteractorRigidbodyOriginalKinematic[i];
+            rb.isKinematic = origK;
+        }
+        currentInteractorRigidbodies.Clear();
+        currentInteractorRigidbodyOriginalKinematic.Clear();
+
+        currentInteractorTransform = null;
+    }
 
     void TryFire()
     {

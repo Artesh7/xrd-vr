@@ -178,7 +178,7 @@ Transform:
   m_GameObject: {fileID: 176148322}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2, z: -6}
+  m_LocalPosition: {x: -28.1, y: 2, z: 18.83}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -298,7 +298,7 @@ Transform:
   m_GameObject: {fileID: 213978589}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 6, y: 2, z: 0}
+  m_LocalPosition: {x: 6, y: 2, z: 19.05}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -707,7 +707,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 527716508}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 37b5f0cd42d18c149a5846fed262bb98, type: 3}
   m_Name: 
@@ -1030,7 +1030,7 @@ Transform:
   m_GameObject: {fileID: 875769911}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -0.1394, y: -0.0027, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1419,7 +1419,7 @@ Transform:
   m_GameObject: {fileID: 1057896124}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2, z: 1}
+  m_LocalPosition: {x: -11.36, y: 2, z: 19.25}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2777,6 +2777,7 @@ GameObject:
   - component: {fileID: 1595610096}
   - component: {fileID: 1595610095}
   - component: {fileID: 1595610094}
+  - component: {fileID: 1595610098}
   m_Layer: 0
   m_Name: Gun_M1911
   m_TagString: Untagged
@@ -2801,7 +2802,7 @@ MonoBehaviour:
   projectileSpeed: 30
   fireCooldown: 0.15
   requireMag: 1
-  magCapacity: 7
+  magCapacity: 777
   desktopFire: {fileID: -5521700719496447404, guid: 70a2ece22659f0748b774d80e64735a4, type: 3}
   magInserted: 0
 --- !u!114 &1595610095
@@ -2980,6 +2981,19 @@ Transform:
   - {fileID: 898146872}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+--- !u!114 &1595610098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1595610093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32d1095a13c7a3b499ba9776088d9223, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RequireProximityGrab
+  maxDistance: 0.75
 --- !u!1 &1703568385
 GameObject:
   m_ObjectHideFlags: 0
