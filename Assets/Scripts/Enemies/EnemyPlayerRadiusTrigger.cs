@@ -25,6 +25,7 @@ public class EnemyPlayerRadiusTrigger : MonoBehaviour
         if (!enemy || enemy.IsDead) return;
         if (other.CompareTag("Player"))
         {
+            enemy.OnPlayerRadiusEnter(); // stop running while engaging
             var anim = enemy.Animator;
             if (anim)
             {
@@ -39,6 +40,7 @@ public class EnemyPlayerRadiusTrigger : MonoBehaviour
         if (!enemy || enemy.IsDead) return;
         if (other.CompareTag("Player"))
         {
+            enemy.OnPlayerRadiusEnter(); // keep engaged
             if (Time.time >= lastHitTime + hitInterval)
             {
                 var anim = enemy.Animator;
@@ -48,6 +50,15 @@ public class EnemyPlayerRadiusTrigger : MonoBehaviour
                 }
                 lastHitTime = Time.time;
             }
+        }
+    }
+
+    void OnTriggerExit(Collider other)
+    {
+        if (!enemy || enemy.IsDead) return;
+        if (other.CompareTag("Player"))
+        {
+            enemy.OnPlayerRadiusExit(); // resume running when player leaves radius
         }
     }
 }

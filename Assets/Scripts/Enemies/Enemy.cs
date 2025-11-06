@@ -8,29 +8,27 @@ public class Enemy : MonoBehaviour
     [Header("Knockback")]
     public float knockbackDamping = 10f; // higher = faster decay
 
-    [Header("Death")]
-    public float destroyDelayAfterDeath = 0f; // 0 = immediate destroy (adjust if you want death anim to play)
-
     [Header("Animation")]
-    public Animator animator; // assign or auto-find
-
-    [Header("Behavior")]
-    [Tooltip("Enemy stops moving when closer than this distance to the player (stand-still while attacking).")]
-    public float standStillDistance = 1.5f;
-    [Tooltip("How quickly the enemy turns to face the player.")]
-    public float rotationSpeed = 8f;
+    [SerializeField] private Animator animator;
 
     private Vector3 knockbackVelocity;
 
     private Transform target;
     private CharacterController cc;
-    private bool isDead;
+
+    // State
+    public bool IsDead { get; private set; }
+    private bool engagedWithPlayer; // within PlayerRadius, stop running/attack
+
+    // Expose Animator for helper scripts like EnemyPlayerRadiusTrigger
+    public Animator Animator => animator;
 
     void Awake()
     {
         cc = GetComponent<CharacterController>();
         if (!animator)
         {
+            // Try find any Animator on self or children if not wired in inspector
             animator = GetComponentInChildren<Animator>();
         }
     }
@@ -51,20 +49,15 @@ public class Enemy : MonoBehaviour
 
     void Update()
     {
-        if (isDead) return; // stop movement when dead
-        if (!target) return;
+        if (IsDead || !target) return;
 
         Vector3 toPlayer = target.position - transform.position;
-        // Use horizontal (XZ) distance for movement decisions to avoid VR head height jitter
-        Vector3 flat = new Vector3(toPlayer.x, 0f, toPlayer.z);
-        float horizontalDistance = flat.magnitude;
-        Vector3 moveDir = horizontalDistance > 0.0001f ? (flat / horizontalDistance) : Vector3.zero;
+        Vector3 flat = new Vector3(toPlayer.x, 0f, toPlayer.z).normalized;
 
-        // Chase only if outside standStillDistance
-        if (horizontalDistance > standStillDistance)
+        // Use SimpleMove for intended chasing movement (includes gravity)
+        if (!engagedWithPlayer)
         {
-            // Use SimpleMove for intended chasing movement (includes gravity)
-            cc.SimpleMove(moveDir * speed);
+            cc.SimpleMove(flat * speed);
         }
 
         // Apply additional knockback movement (does not include gravity)
@@ -77,20 +70,20 @@ public class Enemy : MonoBehaviour
             knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, decay);
         }
 
-        if (moveDir.sqrMagnitude > 0.0001f)
-        {
-            // Smooth rotation to reduce close-range jitter
-            Quaternion targetRot = Quaternion.LookRotation(moveDir);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
-        }
+        if (flat.sqrMagnitude > 0.0001f)
+            transform.rotation = Quaternion.LookRotation(flat);
     }
 
     public void TakeDamage(float amount)
     {
+        if (IsDead) return;
         health -= amount;
-        if (health <= 0f && !isDead)
+        if (health <= 0f)
         {
-            Die();
+            IsDead = true;
+            // Optionally signal animator here (parameter name may vary per controller)
+            // if (animator) animator.SetBool("Dead", true);
+            Destroy(gameObject);
         }
     }
 
@@ -101,28 +94,14 @@ public class Enemy : MonoBehaviour
         knockbackVelocity += impulse;
     }
 
-    private void Die()
+    // Called by PlayerRadius trigger when the player enters/stays/exits
+    public void OnPlayerRadiusEnter()
     {
-        isDead = true;
-        if (animator)
-        {
-            animator.SetBool("isDead", true);
-        }
-        // Hard stop all motion (including lingering knockback) when dead
-        knockbackVelocity = Vector3.zero;
-        // Optionally ensure CharacterController doesn't retain momentum
-        // (SimpleMove applies internally each frame, so just skipping Update logic is enough.)
-        if (destroyDelayAfterDeath > 0f)
-        {
-            Destroy(gameObject, destroyDelayAfterDeath);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        engagedWithPlayer = true;
     }
 
-    // Public accessors for helper trigger component
-    public bool IsDead => isDead;
-    public Animator Animator => animator;
+    public void OnPlayerRadiusExit()
+    {
+        engagedWithPlayer = false;
+    }
 }

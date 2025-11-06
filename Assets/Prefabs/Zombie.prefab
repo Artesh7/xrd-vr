@@ -68,6 +68,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 80a3b434861c82e44abcffcd6d53f737, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyPlayerRadiusTrigger
+  hitInterval: 1
 --- !u!1001 &2371232859528158466
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -315,6 +316,8 @@ MonoBehaviour:
   knockbackDamping: 10
   destroyDelayAfterDeath: 0
   animator: {fileID: 0}
+  standStillDistance: 1.5
+  rotationSpeed: 8
 --- !u!54 &4762845532030414270
 Rigidbody:
   m_ObjectHideFlags: 0
