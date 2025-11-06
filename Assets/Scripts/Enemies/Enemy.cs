@@ -17,7 +17,15 @@ public class Enemy : MonoBehaviour
     void Start()
     {
         var player = GameObject.FindWithTag("Player");
-        if (player != null) target = player.transform;
+        if (player != null)
+        {
+            target = player.transform;
+        }
+        else if (Camera.main != null)
+        {
+            // Fall back to the main camera (VR headset) so enemies move toward the view
+            target = Camera.main.transform;
+        }
     }
 
     void Update()
