@@ -26,11 +26,16 @@ public class GunController : MonoBehaviour
     [Header("Optional desktop testing (non-VR)")]
     public InputActionReference desktopFire; // allows left-click to fire in Editor
 
+    [Header("Audio")]
+    [Tooltip("Gunshot sound played when firing")]
+    public AudioClip gunshotSound;
+
     [HideInInspector] public bool magInserted;
     int ammoInMag;
     float nextFireTime;
     bool isFiring;
 
+    AudioSource audioSource;
     UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable grab;
     System.Action<InputAction.CallbackContext> desktopFireHandler;
 
@@ -49,6 +54,21 @@ public class GunController : MonoBehaviour
 
     void Awake()
     {
+        // Get or add AudioSource component for gunshot sound
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1f; // 3D sound
+            Debug.Log("GunController: Created new AudioSource component");
+        }
+        
+        // Ensure AudioSource is enabled
+        audioSource.enabled = true;
+        audioSource.mute = false;
+        audioSource.volume = 1f;
+
         grab = GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
 
         if (grab != null)
@@ -224,6 +244,18 @@ public class GunController : MonoBehaviour
         var go = Instantiate(projectilePrefab, muzzle.position, muzzle.rotation);
         if (go.TryGetComponent<Rigidbody>(out var rb))
             rb.linearVelocity = muzzle.forward * projectileSpeed;
+
+        // Play gunshot sound
+        if (audioSource != null && gunshotSound != null)
+        {
+            audioSource.PlayOneShot(gunshotSound);
+            Debug.Log("Gunshot sound played!");
+        }
+        else
+        {
+            if (audioSource == null) Debug.LogWarning("GunController: AudioSource is null!");
+            if (gunshotSound == null) Debug.LogWarning("GunController: gunshotSound AudioClip not assigned in Inspector!");
+        }
 
         Debug.Log("Gun fired");
     }

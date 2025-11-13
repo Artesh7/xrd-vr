@@ -3781,6 +3781,7 @@ MonoBehaviour:
   magazineLocalRotation: {x: 0, y: 0, z: 0, w: 1}
   attachYawOffset: 180
   desktopFire: {fileID: 0}
+  gunshotSound: {fileID: 8300000, guid: 089597d53174411438ad7f8ae4bd451f, type: 3}
   magInserted: 0
 --- !u!1 &2046629158
 GameObject:
