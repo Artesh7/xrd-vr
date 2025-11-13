@@ -16,6 +16,7 @@ public class GunProjectile : MonoBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        
         if (lifeTime > 0f)
             Destroy(gameObject, lifeTime);
     }
@@ -49,10 +50,45 @@ public class GunProjectile : MonoBehaviour
             dir.y = 0f; // keep knockback mostly horizontal
             dir.Normalize();
             enemy.ApplyKnockback(dir * knockbackForce);
+            
+            // Activate HitBlood and hide projectile
+            Transform hitBlood = transform.Find("HitBlood");
+            if (hitBlood != null)
+            {
+                hitBlood.gameObject.SetActive(true);
+                
+                // Get particle system duration
+                ParticleSystem ps = hitBlood.GetComponent<ParticleSystem>();
+                float bloodDuration = ps != null ? ps.main.duration + ps.main.startLifetime.constantMax : 1f;
+                
+                // Hide projectile visuals
+                var renderer = GetComponent<Renderer>();
+                if (renderer != null)
+                    renderer.enabled = false;
+                
+                // Disable collider so it doesn't hit anything else
+                var collider = GetComponent<Collider>();
+                if (collider != null)
+                    collider.enabled = false;
+                
+                // Stop rigidbody movement
+                if (rb != null)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                    rb.isKinematic = true;
+                }
+                
+                // Destroy after particle finishes
+                Destroy(gameObject, bloodDuration);
+            }
+            else if (destroyOnHit)
+            {
+                // No HitBlood found, destroy immediately
+                Destroy(gameObject);
+            }
 
             hasHit = true;
-            if (destroyOnHit)
-                Destroy(gameObject);
         }
     }
 }
