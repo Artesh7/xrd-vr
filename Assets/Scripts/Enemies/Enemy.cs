@@ -55,12 +55,19 @@ public class Enemy : MonoBehaviour
         Vector3 flat = new Vector3(toPlayer.x, 0f, toPlayer.z).normalized;
 
         // Use SimpleMove for intended chasing movement (includes gravity)
+        // Only move when NOT engaged with player (not attacking)
         if (!engagedWithPlayer)
         {
             cc.SimpleMove(flat * speed);
         }
+        else
+        {
+            // When engaged (attacking), apply gravity only, no forward movement
+            cc.SimpleMove(Vector3.zero);
+        }
 
         // Apply additional knockback movement (does not include gravity)
+        // Even when attacking, knockback should still work
         if (knockbackVelocity.sqrMagnitude > 0.0001f)
         {
             cc.Move(knockbackVelocity * Time.deltaTime);
@@ -70,6 +77,7 @@ public class Enemy : MonoBehaviour
             knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, decay);
         }
 
+        // Always face the player (rotation) regardless of movement state
         if (flat.sqrMagnitude > 0.0001f)
             transform.rotation = Quaternion.LookRotation(flat);
     }

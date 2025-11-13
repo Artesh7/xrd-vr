@@ -52,7 +52,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.77
+  m_Radius: 0.95
   m_Height: 1.82
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0.19287014}
@@ -314,10 +314,7 @@ MonoBehaviour:
   health: 100
   speed: 3
   knockbackDamping: 10
-  destroyDelayAfterDeath: 0
   animator: {fileID: 0}
-  standStillDistance: 1.5
-  rotationSpeed: 8
 --- !u!54 &4762845532030414270
 Rigidbody:
   m_ObjectHideFlags: 0
