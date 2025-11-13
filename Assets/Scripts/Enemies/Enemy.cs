@@ -49,7 +49,10 @@ public class Enemy : MonoBehaviour
 
     void Update()
     {
-        if (IsDead || !target) return;
+        // If dead, stop all updates (no movement, no rotation)
+        if (IsDead) return;
+        
+        if (!target) return;
 
         Vector3 toPlayer = target.position - transform.position;
         Vector3 flat = new Vector3(toPlayer.x, 0f, toPlayer.z).normalized;
@@ -89,9 +92,19 @@ public class Enemy : MonoBehaviour
         if (health <= 0f)
         {
             IsDead = true;
-            // Optionally signal animator here (parameter name may vary per controller)
-            // if (animator) animator.SetBool("Dead", true);
-            Destroy(gameObject);
+            
+            // Stop all velocity immediately when dead
+            knockbackVelocity = Vector3.zero;
+            
+            // Trigger Die animation in animator
+            if (animator)
+            {
+                animator.SetBool("isDead", true);
+                animator.SetTrigger("Die");
+            }
+            
+            // Destroy after 2 seconds to let animation play
+            Destroy(gameObject, 2f);
         }
     }
 

@@ -152,7 +152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b4327eda8bcc99149a3c8ae6a4c8f17f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GunProjectile
-  damage: 50
+  damage: 77
   knockbackForce: 8
   lifeTime: 11
   destroyOnHit: 1
