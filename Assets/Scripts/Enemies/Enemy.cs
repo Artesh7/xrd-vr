@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 [RequireComponent(typeof(CharacterController))]
 public class Enemy : MonoBehaviour
@@ -10,6 +11,10 @@ public class Enemy : MonoBehaviour
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
+    
+    [Header("Death")]
+    public float deathAnimDuration = 2f; // Time before fade starts
+    public float fadeOutDuration = 1f; // Fade duration
 
     private Vector3 knockbackVelocity;
 
@@ -103,9 +108,72 @@ public class Enemy : MonoBehaviour
                 animator.SetTrigger("Die");
             }
             
-            // Destroy after 2 seconds to let animation play
-            Destroy(gameObject, 2f);
+            // Start death and fade sequence
+            StartCoroutine(DeathSequence());
         }
+    }
+    
+    IEnumerator DeathSequence()
+    {
+        // Wait for death animation to play
+        yield return new WaitForSeconds(deathAnimDuration);
+        
+        // Get all renderers to fade
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        
+        // Store original materials and create fade materials
+        Material[][] originalMaterials = new Material[renderers.Length][];
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            originalMaterials[i] = renderers[i].materials;
+            
+            // Create new material instances for fading
+            Material[] newMats = new Material[renderers[i].materials.Length];
+            for (int j = 0; j < renderers[i].materials.Length; j++)
+            {
+                newMats[j] = new Material(renderers[i].materials[j]);
+                
+                // Enable transparency if not already
+                if (newMats[j].HasProperty("_Mode"))
+                {
+                    newMats[j].SetFloat("_Mode", 3); // Transparent mode
+                    newMats[j].SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    newMats[j].SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    newMats[j].SetInt("_ZWrite", 0);
+                    newMats[j].DisableKeyword("_ALPHATEST_ON");
+                    newMats[j].EnableKeyword("_ALPHABLEND_ON");
+                    newMats[j].DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                    newMats[j].renderQueue = 3000;
+                }
+            }
+            renderers[i].materials = newMats;
+        }
+        
+        // Fade out
+        float elapsed = 0f;
+        while (elapsed < fadeOutDuration)
+        {
+            elapsed += Time.deltaTime;
+            float alpha = Mathf.Lerp(1f, 0f, elapsed / fadeOutDuration);
+            
+            foreach (var renderer in renderers)
+            {
+                foreach (var mat in renderer.materials)
+                {
+                    if (mat.HasProperty("_Color"))
+                    {
+                        Color c = mat.color;
+                        c.a = alpha;
+                        mat.color = c;
+                    }
+                }
+            }
+            
+            yield return null;
+        }
+        
+        // Destroy after fade completes
+        Destroy(gameObject);
     }
 
     // Additive knockback impulse in world space
@@ -124,5 +192,75 @@ public class Enemy : MonoBehaviour
     public void OnPlayerRadiusExit()
     {
         engagedWithPlayer = false;
+    }
+    
+    // Called externally (e.g., when player dies) to fade away immediately
+    public void FadeAway(float delay = 0f)
+    {
+        if (!gameObject.activeInHierarchy) return;
+        StartCoroutine(FadeAwaySequence(delay));
+    }
+    
+    IEnumerator FadeAwaySequence(float delay)
+    {
+        // Optional delay before starting fade
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+        
+        // Get all renderers to fade
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        
+        // Create fade materials
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Material[] newMats = new Material[renderers[i].materials.Length];
+            for (int j = 0; j < renderers[i].materials.Length; j++)
+            {
+                newMats[j] = new Material(renderers[i].materials[j]);
+                
+                // Enable transparency
+                if (newMats[j].HasProperty("_Mode"))
+                {
+                    newMats[j].SetFloat("_Mode", 3);
+                    newMats[j].SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    newMats[j].SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    newMats[j].SetInt("_ZWrite", 0);
+                    newMats[j].DisableKeyword("_ALPHATEST_ON");
+                    newMats[j].EnableKeyword("_ALPHABLEND_ON");
+                    newMats[j].DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                    newMats[j].renderQueue = 3000;
+                }
+            }
+            renderers[i].materials = newMats;
+        }
+        
+        // Fade out
+        float elapsed = 0f;
+        while (elapsed < fadeOutDuration)
+        {
+            elapsed += Time.deltaTime;
+            float alpha = Mathf.Lerp(1f, 0f, elapsed / fadeOutDuration);
+            
+            foreach (var renderer in renderers)
+            {
+                if (renderer != null && renderer.materials != null)
+                {
+                    foreach (var mat in renderer.materials)
+                    {
+                        if (mat != null && mat.HasProperty("_Color"))
+                        {
+                            Color c = mat.color;
+                            c.a = alpha;
+                            mat.color = c;
+                        }
+                    }
+                }
+            }
+            
+            yield return null;
+        }
+        
+        // Destroy after fade completes
+        Destroy(gameObject);
     }
 }

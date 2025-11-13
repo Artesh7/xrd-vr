@@ -82,7 +82,7 @@ public class GunProjectile : MonoBehaviour
                 // Destroy after particle finishes
                 Destroy(gameObject, bloodDuration);
             }
-            else if (destroyOnHit)
+            else if (destroyOnHit) 
             {
                 // No HitBlood found, destroy immediately
                 Destroy(gameObject);

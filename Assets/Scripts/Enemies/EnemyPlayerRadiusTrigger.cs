@@ -32,6 +32,9 @@ public class EnemyPlayerRadiusTrigger : MonoBehaviour
                 anim.SetTrigger("Hit");
                 lastHitTime = Time.time;
             }
+            
+            // Damage the player
+            DamagePlayer(other);
         }
     }
 
@@ -49,6 +52,9 @@ public class EnemyPlayerRadiusTrigger : MonoBehaviour
                     anim.SetTrigger("Hit");
                 }
                 lastHitTime = Time.time;
+                
+                // Damage the player on each hit
+                DamagePlayer(other);
             }
         }
     }
@@ -59,6 +65,26 @@ public class EnemyPlayerRadiusTrigger : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             enemy.OnPlayerRadiusExit(); // resume running when player leaves radius
+        }
+    }
+    
+    void DamagePlayer(Collider playerCollider)
+    {
+        // Try to find PlayerHealth on the player or any parent
+        var playerHealth = playerCollider.GetComponentInParent<PlayerHealth>();
+        if (playerHealth == null)
+        {
+            // Also try on the collider's GameObject directly
+            playerHealth = playerCollider.GetComponent<PlayerHealth>();
+        }
+        
+        if (playerHealth != null)
+        {
+            playerHealth.TakeDamage();
+        }
+        else
+        {
+            Debug.LogWarning("PlayerHealth component not found on Player!");
         }
     }
 }
